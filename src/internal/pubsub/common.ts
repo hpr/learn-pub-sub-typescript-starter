@@ -1,5 +1,6 @@
 import amqp from "amqplib";
 
+export type SimpleQueueType = "durable" | "transient";
 export const amqpConnect = async () => {
   console.log("Starting Peril server...");
   const conn = await amqp.connect("amqp://guest:guest@localhost:5672/");

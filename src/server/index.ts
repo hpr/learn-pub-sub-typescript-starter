@@ -1,7 +1,7 @@
 import { declareAndBind, publishJSON } from "../internal/pubsub/pub.js";
 import { ExchangePerilDirect, ExchangePerilTopic, GameLogSlug, PauseKey } from "../internal/routing/routing.js";
 import type { PlayingState } from "../internal/gamelogic/gamestate.js";
-import { amqpConnect } from "../internal/pubsub/connect.js";
+import { amqpConnect } from "../internal/pubsub/common.js";
 import { getInput, printServerHelp } from "../internal/gamelogic/gamelogic.js";
 
 async function main() {
