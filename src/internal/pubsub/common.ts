@@ -1,5 +1,6 @@
 import amqp from "amqplib";
 
+export type AckType = "Ack" | "NackRequeue" | "NackDiscard";
 export type SimpleQueueType = "durable" | "transient";
 export const amqpConnect = async () => {
   console.log("Starting Peril server...");
