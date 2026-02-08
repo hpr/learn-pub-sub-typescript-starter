@@ -3,17 +3,22 @@ import { GameState } from "../internal/gamelogic/gamestate.js";
 import { commandMove } from "../internal/gamelogic/move.js";
 import { commandSpawn } from "../internal/gamelogic/spawn.js";
 import { amqpConnect } from "../internal/pubsub/common.js";
+import { publishJSON } from "../internal/pubsub/pub.js";
 import { subscribeJSON } from "../internal/pubsub/sub.js";
-import { ExchangePerilDirect, PauseKey } from "../internal/routing/routing.js";
-import { handlerPause } from "./handlers.js";
+import { ArmyMovesPrefix, ExchangePerilDirect, ExchangePerilTopic, PauseKey } from "../internal/routing/routing.js";
+import { handlerMove, handlerPause } from "./handlers.js";
 
 async function main() {
   const conn = await amqpConnect();
   const username = await clientWelcome();
 
   const gs = new GameState(username);
-  const pauseQueueName = `${PauseKey}.${username}`;
-  await subscribeJSON(conn, ExchangePerilDirect, pauseQueueName, PauseKey, "transient", handlerPause(gs));
+  await subscribeJSON(conn, ExchangePerilDirect, `${PauseKey}.${username}`, PauseKey, "transient", handlerPause(gs));
+
+  const movesQueueName = `${ArmyMovesPrefix}.${username}`;
+  await subscribeJSON(conn, ExchangePerilTopic, movesQueueName, `${ArmyMovesPrefix}.*`, "transient", handlerMove(gs));
+
+  const confirmCh = await conn.createConfirmChannel();
   while (true) {
     try {
       const words = await getInput();
@@ -23,7 +28,9 @@ async function main() {
           commandSpawn(gs, words);
           break;
         case "move":
-          commandMove(gs, words);
+          const move = commandMove(gs, words);
+          publishJSON(confirmCh, ExchangePerilTopic, movesQueueName, move);
+          console.log("Move published successfully");
           break;
         case "status":
           await commandStatus(gs);
