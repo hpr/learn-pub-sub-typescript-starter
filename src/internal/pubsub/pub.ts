@@ -10,7 +10,10 @@ export const declareAndBind = async (conn: ChannelModel, exchange: string, queue
     durable: queueType === "durable",
     autoDelete: queueType === "transient",
     exclusive: queueType === "transient",
+    arguments: {
+      "x-dead-letter-exchange": "peril_dlx"
+    },
   });
   await ch.bindQueue(queueName, exchange, key);
-  return [ch, queue]
+  return [ch, queue];
 };
