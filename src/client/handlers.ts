@@ -24,11 +24,12 @@ export const handlerMove = (gs: GameState, ch: ConfirmChannel): (move: ArmyMove)
       case MoveOutcome.Safe:
         return "Ack";
       case MoveOutcome.MakeWar:
-        publishJSON<RecognitionOfWar>(ch, ExchangePerilTopic, `${WarRecognitionsPrefix}.${gs.getUsername()}`, {
+        const result = publishJSON<RecognitionOfWar>(ch, ExchangePerilTopic, `${WarRecognitionsPrefix}.${gs.getUsername()}`, {
           attacker: move.player,
           defender: gs.getPlayerSnap(),
         });
-        return "NackRequeue";
+        if (!result) return "NackRequeue";
+        return "Ack";
       case MoveOutcome.SamePlayer:
       default:
         return "NackDiscard";
