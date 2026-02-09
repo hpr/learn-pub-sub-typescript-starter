@@ -13,6 +13,7 @@ export async function subscribe<T>(
   unmarshaller: (data: Buffer) => T,
 ): Promise<void> {
   const [ch, queue] = await declareAndBind(conn, exchange, queueName, routingKey, simpleQueueType);
+  await ch.prefetch(1);
   ch.consume(queue.queue, async (msg: ConsumeMessage | null) => {
     if (!msg) return;
     const content: T = unmarshaller(msg.content);
