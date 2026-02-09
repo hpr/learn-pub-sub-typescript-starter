@@ -1,13 +1,19 @@
-import { declareAndBind, publishJSON } from "../internal/pubsub/pub.js";
+import { publishJSON } from "../internal/pubsub/pub.js";
 import { ExchangePerilDirect, ExchangePerilTopic, GameLogSlug, PauseKey } from "../internal/routing/routing.js";
 import type { PlayingState } from "../internal/gamelogic/gamestate.js";
 import { amqpConnect } from "../internal/pubsub/common.js";
 import { getInput, printServerHelp } from "../internal/gamelogic/gamelogic.js";
+import { subscribeMsgPack } from "../internal/pubsub/sub.js";
+import { writeLog, type GameLog } from "../internal/gamelogic/logs.js";
 
 async function main() {
   const conn = await amqpConnect();
   const confirmCh = await conn.createConfirmChannel();
-  const [ch, queue] = await declareAndBind(conn, ExchangePerilTopic, GameLogSlug, `${GameLogSlug}.*`, "durable");
+  subscribeMsgPack<GameLog>(conn, ExchangePerilTopic, GameLogSlug, `${GameLogSlug}.*`, "durable", (gl: GameLog) => {
+    writeLog(gl);
+    process.stdout.write("> ");
+    return "Ack";
+  });
   printServerHelp();
   while (true) {
     const words = await getInput();

@@ -1,12 +1,17 @@
+import type { ConfirmChannel } from "amqplib";
 import { clientWelcome, commandStatus, getInput, printClientHelp, printQuit } from "../internal/gamelogic/gamelogic.js";
 import { GameState } from "../internal/gamelogic/gamestate.js";
 import { commandMove } from "../internal/gamelogic/move.js";
 import { commandSpawn } from "../internal/gamelogic/spawn.js";
 import { amqpConnect } from "../internal/pubsub/common.js";
-import { publishJSON } from "../internal/pubsub/pub.js";
+import { publishJSON, publishMsgPack } from "../internal/pubsub/pub.js";
 import { subscribeJSON } from "../internal/pubsub/sub.js";
-import { ArmyMovesPrefix, ExchangePerilDirect, ExchangePerilTopic, PauseKey, WarRecognitionsPrefix } from "../internal/routing/routing.js";
+import { ArmyMovesPrefix, ExchangePerilDirect, ExchangePerilTopic, GameLogSlug, PauseKey, WarRecognitionsPrefix } from "../internal/routing/routing.js";
 import { handlerMove, handlerPause, handlerWar } from "./handlers.js";
+import type { GameLog } from "../internal/gamelogic/logs.js";
+
+export const publishGameLog = (ch: ConfirmChannel, username: string, message: string) => 
+  publishMsgPack<GameLog>(ch, ExchangePerilTopic, `${GameLogSlug}.${username}`, { username, message, currentTime: new Date() });
 
 async function main() {
   const conn = await amqpConnect();
@@ -19,7 +24,7 @@ async function main() {
   const movesQueueName = `${ArmyMovesPrefix}.${username}`;
   await subscribeJSON(conn, ExchangePerilTopic, movesQueueName, `${ArmyMovesPrefix}.*`, "transient", handlerMove(gs, confirmCh));
 
-  await subscribeJSON(conn, ExchangePerilTopic, WarRecognitionsPrefix, `${WarRecognitionsPrefix}.*`, "durable", handlerWar(gs));
+  await subscribeJSON(conn, ExchangePerilTopic, WarRecognitionsPrefix, `${WarRecognitionsPrefix}.*`, "durable", handlerWar(gs, confirmCh));
 
   while (true) {
     try {
