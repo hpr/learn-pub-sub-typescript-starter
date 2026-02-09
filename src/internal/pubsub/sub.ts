@@ -2,12 +2,12 @@ import type { ChannelModel, ConsumeMessage } from "amqplib";
 import type { AckType, SimpleQueueType } from "./common.js"
 import { declareAndBind } from "./pub.js";
 
-export async function subscribeJSON<T>(conn: ChannelModel, exchange: string, queueName: string, key: string, queueType: SimpleQueueType, handler: (data: T) => AckType): Promise<void> {
+export async function subscribeJSON<T>(conn: ChannelModel, exchange: string, queueName: string, key: string, queueType: SimpleQueueType, handler: (data: T) => Promise<AckType> | AckType): Promise<void> {
   const [ch, queue] = await declareAndBind(conn, exchange, queueName, key, queueType);
-  ch.consume(queue.queue, (msg: ConsumeMessage | null) => {
+  ch.consume(queue.queue, async (msg: ConsumeMessage | null) => {
     if (!msg) return;
     const content: T = JSON.parse(msg.content.toString());
-    const ackType: AckType = handler(content);
+    const ackType = await handler(content);
     console.log(`AckType: ${ackType}`);
     switch (ackType) {
       case "Ack": ch.ack(msg); break;

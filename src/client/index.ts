@@ -5,20 +5,22 @@ import { commandSpawn } from "../internal/gamelogic/spawn.js";
 import { amqpConnect } from "../internal/pubsub/common.js";
 import { publishJSON } from "../internal/pubsub/pub.js";
 import { subscribeJSON } from "../internal/pubsub/sub.js";
-import { ArmyMovesPrefix, ExchangePerilDirect, ExchangePerilTopic, PauseKey } from "../internal/routing/routing.js";
-import { handlerMove, handlerPause } from "./handlers.js";
+import { ArmyMovesPrefix, ExchangePerilDirect, ExchangePerilTopic, PauseKey, WarRecognitionsPrefix } from "../internal/routing/routing.js";
+import { handlerMove, handlerPause, handlerWar } from "./handlers.js";
 
 async function main() {
   const conn = await amqpConnect();
   const username = await clientWelcome();
+  const confirmCh = await conn.createConfirmChannel();
 
   const gs = new GameState(username);
   await subscribeJSON(conn, ExchangePerilDirect, `${PauseKey}.${username}`, PauseKey, "transient", handlerPause(gs));
 
   const movesQueueName = `${ArmyMovesPrefix}.${username}`;
-  await subscribeJSON(conn, ExchangePerilTopic, movesQueueName, `${ArmyMovesPrefix}.*`, "transient", handlerMove(gs));
+  await subscribeJSON(conn, ExchangePerilTopic, movesQueueName, `${ArmyMovesPrefix}.*`, "transient", handlerMove(gs, confirmCh));
 
-  const confirmCh = await conn.createConfirmChannel();
+  await subscribeJSON(conn, ExchangePerilTopic, WarRecognitionsPrefix, `${WarRecognitionsPrefix}.*`, "durable", handlerWar(gs));
+
   while (true) {
     try {
       const words = await getInput();
